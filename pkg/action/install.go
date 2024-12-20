@@ -473,6 +473,15 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
+		// Invalidate the REST mapper, since CRDs may have been installed as part of the main install phase
+		restMapper, err := i.cfg.RESTClientGetter.ToRESTMapper()
+		if err != nil {
+			return err
+		}
+		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
+			i.cfg.Log("Clearing REST mapper cache")
+			resettable.Reset()
+		}
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
